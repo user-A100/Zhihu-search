@@ -1,0 +1,13 @@
+{
+  "scanned_at": "2026-07-26",
+  "framework": "vanilla HTML/CSS/JavaScript Chrome MV3 extension",
+  "font_stack": "Microsoft YaHei UI body with STKaiti/KaiTi display",
+  "palette": "paper, ink, moss and cinnabar custom properties",
+  "motion": "motion-cut; CSS transitions only",
+  "spacing": "hand-authored spacing upgraded to a 4pt token scale",
+  "preserve": [
+    "Chinese editorial character",
+    "paper and ink palette",
+    "local-first product voice"
+  ]
+}

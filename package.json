@@ -1,0 +1,14 @@
+{
+  "name": "zhicang",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "check": "node --check src/background.js && node --check src/content-marker.js && node --check src/dashboard.js && node --check src/lib.js && node --check src/obsidian.js && node --check src/boot-guard.js"
+  },
+  "dependencies": {
+    "turndown": "^7.2.1",
+    "turndown-plugin-gfm": "^1.0.2"
+  }
+}

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>知藏 · 知乎收藏检索</title>
+    <link rel="stylesheet" href="./dashboard-workbench.css" />
+  </head>
+  <body>
+    <div id="bootError" class="boot-error" hidden>
+      知藏没有正常启动。请在扩展管理页重新加载“知藏”，然后刷新此页面。
+    </div>
+    <div class="app-shell" id="top">
+      <header class="masthead">
+        <a class="brand" href="#top" aria-label="知藏首页">
+          <span class="brand-mark" aria-hidden="true">知</span>
+          <span class="brand-copy"><strong>知藏</strong><small>ZHICANG INDEX</small></span>
+        </a>
+        <div class="search-cluster">
+          <div class="masthead-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 21-4.3-4.3m2.3-5.2A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z" />
+            </svg>
+            <input
+              id="searchInput"
+              type="search"
+              aria-label="搜索标题、作者、摘要、正文或收藏夹"
+              placeholder="搜索收藏内容"
+              autocomplete="off"
+            />
+            <kbd>/</kbd>
+          </div>
+          <button class="outline-button" id="advancedSearchToggle" type="button" aria-expanded="false">
+            多级搜索
+          </button>
+        </div>
+        <button class="quiet-button" id="settingsButton" type="button">同步设置</button>
+      </header>
+
+      <main>
+        <section class="advanced-search" id="advancedSearchSection" aria-label="多级搜索条件" hidden>
+          <div id="advancedSearchPanel" class="advanced-search-panel">
+            <div id="conditionList" class="condition-list"></div>
+            <div class="condition-actions">
+              <button class="text-button" id="addConditionButton" type="button">＋ 新增一层</button>
+              <button class="text-button muted" id="clearConditionsButton" type="button">清空条件</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace" aria-live="polite">
+          <aside class="rail">
+            <div class="stat-block">
+              <span>本地索引</span>
+              <strong id="totalCount">0</strong>
+              <small>篇收藏内容</small>
+            </div>
+            <nav class="filters" aria-label="剪藏状态">
+              <button class="filter active" data-filter="all" type="button">
+                <span>全部内容</span><b id="allCount">0</b>
+              </button>
+              <button class="filter" data-filter="unclipped" type="button">
+                <span>待剪藏</span><b id="unclippedCount">0</b>
+              </button>
+              <button class="filter" data-filter="clipped" type="button">
+                <span>已剪藏</span><b id="clippedCount">0</b>
+              </button>
+            </nav>
+            <div class="rail-note">
+              <span class="shortcut-dot"></span>
+              <p>简悦导出后可在知乎页标记；知藏直接导出成功后会自动标记。</p>
+            </div>
+          </aside>
+
+          <div class="results-column">
+            <div class="result-meta">
+              <p id="resultSummary">尚未同步收藏</p>
+              <div class="result-options">
+                <select id="collectionFilter" aria-label="按收藏夹筛选">
+                  <option value="">全部收藏夹</option>
+                </select>
+                <select id="pageSizeSelect" aria-label="每页显示数量">
+                  <option value="20">每页 20 篇</option>
+                  <option value="50">每页 50 篇</option>
+                  <option value="100">每页 100 篇</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="bulkToolbar" class="bulk-toolbar" hidden>
+              <label class="select-page">
+                <input id="selectPageCheckbox" type="checkbox" />
+                <span>选择本页</span>
+              </label>
+              <span id="selectedCount" class="selected-count">已选 0 篇</span>
+              <div class="bulk-actions">
+                <button class="outline-button" id="importSelectedButton" type="button" disabled>导入所选</button>
+                <button class="primary-button" id="importAllButton" type="button">导入全部结果</button>
+              </div>
+            </div>
+            <div id="batchProgress" class="batch-progress" hidden>
+              <div class="progress-track"><span id="batchProgressBar"></span></div>
+              <p id="batchProgressText">准备导入…</p>
+            </div>
+
+            <div id="emptyState" class="empty-state">
+              <div class="empty-glyph" aria-hidden="true">藏</div>
+              <h2>尚未建立收藏索引</h2>
+              <p>个人主页或收藏夹地址只在“同步设置”中填写。</p>
+              <button class="primary-button" id="emptySettingsButton" type="button">打开同步设置</button>
+            </div>
+            <div id="results" class="results" hidden></div>
+            <nav id="pagination" class="pagination" aria-label="搜索结果分页" hidden>
+              <button class="page-step" id="previousPageButton" type="button">上一页</button>
+              <div id="pageNumbers" class="page-numbers"></div>
+              <span id="pageStatus" class="page-status"></span>
+              <button class="page-step" id="nextPageButton" type="button">下一页</button>
+            </nav>
+          </div>
+        </section>
+      </main>
+
+      <footer class="foot-line">
+        <p>知藏 · 收藏索引、剪藏标记与文件夹权限只保存在本机</p>
+        <small id="footerStatus">尚未同步</small>
+      </footer>
+    </div>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" id="settingsForm">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">本地同步</p>
+            <h2>连接你的知乎收藏</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+        <label class="field">
+          <span>知乎个人主页或收藏夹</span>
+          <input id="profileInput" placeholder="https://www.zhihu.com/collection/959441365" required />
+          <small>收藏内容接口需要登录。请先在同一个浏览器中登录知乎。</small>
+        </label>
+        <div class="directory-setting">
+          <div>
+            <strong>Obsidian 导出文件夹</strong>
+            <small id="obsidianDirectoryStatus" aria-live="polite">正在读取当前设置…</small>
+          </div>
+          <button class="directory-button" id="obsidianDirectoryButton" type="button">选择文件夹</button>
+        </div>
+        <p id="obsidianDirectoryError" class="dialog-error" role="alert" hidden></p>
+        <div id="syncProgress" class="sync-progress" hidden>
+          <div class="progress-track"><span id="progressBar"></span></div>
+          <p id="progressText">准备同步…</p>
+        </div>
+        <p id="dialogError" class="dialog-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="quiet-button danger" id="clearButton" type="button">清除本地数据</button>
+          <button class="primary-button" id="syncButton" type="submit">同步收藏</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="resultTemplate">
+      <article class="result-card">
+        <label class="result-select">
+          <input class="result-checkbox" type="checkbox" />
+          <span>选择</span>
+        </label>
+        <button class="clip-toggle" type="button" aria-label="切换剪藏标记">
+          <span></span><b>待剪藏</b>
+        </button>
+        <div class="card-copy">
+          <div class="card-kicker">
+            <span class="content-type"></span>
+            <span class="collection-name"></span>
+          </div>
+          <h2><a class="title-link" target="_blank" rel="noreferrer"></a></h2>
+          <p class="byline"></p>
+          <p class="excerpt"></p>
+        </div>
+        <div class="card-actions">
+          <span class="date"></span>
+          <div class="action-stack">
+            <button class="obsidian-button" type="button">存入 Obsidian</button>
+            <a class="clip-link" target="_blank" rel="noreferrer">打开知乎原文 <span>↗</span></a>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <template id="conditionTemplate">
+      <div class="condition-row">
+        <span class="condition-level"></span>
+        <select class="condition-operator" aria-label="条件关系">
+          <option value="and">并且</option>
+          <option value="or">或者</option>
+          <option value="not">不含</option>
+        </select>
+        <select class="condition-field" aria-label="搜索字段">
+          <option value="all">全部字段</option>
+          <option value="title">标题</option>
+          <option value="author">作者</option>
+          <option value="content">正文与摘要</option>
+          <option value="collection">收藏夹</option>
+          <option value="type">内容类型</option>
+          <option value="status">剪藏状态</option>
+        </select>
+        <input class="condition-value" type="search" aria-label="条件关键词" placeholder="输入关键词" />
+        <button class="condition-remove" type="button" aria-label="删除这一层">×</button>
+      </div>
+    </template>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./preview-runtime.js?v=3"></script>
+    <script src="./lib.js?v=4"></script>
+    <script src="./vendor/turndown/turndown.js"></script>
+    <script src="./vendor/turndown/turndown-plugin-gfm.js"></script>
+    <script src="./obsidian.js?v=4"></script>
+    <script src="./dashboard.js?v=11"></script>
+    <script src="./boot-guard.js"></script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "知藏 · 知乎收藏检索与剪藏标记",
+  "version": "0.3.0",
+  "description": "分页检索知乎收藏，使用多级条件下探，并批量导出 Markdown 到 Obsidian。",
+  "permissions": [
+    "storage",
+    "tabs",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://www.zhihu.com/*",
+    "https://zhuanlan.zhihu.com/*"
+  ],
+  "action": {
+    "default_title": "打开知藏"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.zhihu.com/question/*",
+        "https://zhuanlan.zhihu.com/p/*"
+      ],
+      "js": [
+        "src/content-marker.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-clipped": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "标记或取消标记当前知乎内容"
+    }
+  }
+}
