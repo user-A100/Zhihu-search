@@ -455,7 +455,10 @@ async function runSync(profileInput) {
     for (const entry of entries) {
       try {
         const item = parseCollectionItem(entry, collection);
-        if (item.url) parsed.push(item);
+        if (item.url) {
+          item.collectedOrder = parsed.length;
+          parsed.push(item);
+        }
       } catch (error) {
         console.warn("跳过无法解析的收藏内容", entry, error);
       }

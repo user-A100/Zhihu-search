@@ -1,8 +1,13 @@
 # 知藏
 
-一个本地优先的 Chrome / Edge 扩展：同步并搜索自己的知乎收藏，将回答或文章直接转换为 Markdown 写入 Obsidian，并记录处理状态。
+一个本地优先的知乎收藏工具，包含 Chrome / Edge 扩展和 Android 阅读器：
 
-## 为什么做成浏览器扩展
+- 浏览器扩展负责同步、搜索和整理知乎收藏，并可将回答或文章写入 Obsidian；
+- Android 阅读器负责随机重温、按收藏顺序浏览、搜索、阅读进度和浏览历史。
+
+所有收藏索引、阅读记录和登录会话都保存在当前设备，不需要知藏服务器。
+
+## 为什么从浏览器扩展开始
 
 原项目 [`wang2028/zhihu`](https://github.com/wang2028/zhihu) 的思路是：爬取收藏夹，生成本地数据文件，再用一个本地网页全文搜索。它发布于较早的知乎接口时期，依赖 Node 10、旧版页面结构和一个已经不应继续依赖的第三方远端服务。
 
@@ -14,7 +19,7 @@
 - 简悦导出成功后，可在知乎页面右下角标记“已剪藏”，仪表盘立即同步状态。
 - 也可以不经过简悦，直接把单篇内容转换为 Markdown 写入 Obsidian 文件夹。
 
-## 安装
+## 浏览器扩展安装
 
 1. 下载或克隆本仓库。
 2. 在 Chrome 打开 `chrome://extensions`，或在 Edge 打开 `edge://extensions`。
@@ -54,6 +59,69 @@
 
 如果继续使用简悦同步助手，可保持原来的导出目录；知藏的手动标记和直接导出可以并存。
 
+## 移动端阅读器 MVP
+
+仓库内已经包含独立的知藏移动端界面，专注于更舒适地查看、搜索和重温知乎收藏，不包含 Obsidian 导出功能。
+
+目前包含：
+
+- 记录曝光次数的随机推荐流，优先翻出较少出现的旧收藏；
+- 带本地进度的“藏签”继续阅读；
+- 按收藏时间倒序的收藏库，并可按收藏夹筛选；
+- 标题、作者、正文和收藏夹全文搜索；
+- 沉浸阅读、字号调整、已读状态和浏览历史；
+- 320px 起的移动端响应式布局。
+
+本地查看带演示数据的版本：
+
+```powershell
+npm run preview:mobile
+```
+
+然后访问 `http://127.0.0.1:4173/src/mobile.html?demo=1`。移除 `?demo=1` 后，页面会读取浏览器中的本地收藏索引。Android App 使用独立的原生本地存储，不会自动共享桌面扩展的数据。
+
+### Android App
+
+Android 工程位于 `android/`，通过 Capacitor 包装移动端阅读界面。首次安装后：
+
+1. 打开“我的 → 同步设置”。
+2. 点击“在知藏中登录知乎”，在知乎官方网页中自行完成账号、验证码或扫码登录。
+3. 登录后点击页面顶栏的“完成”，回到知藏。
+4. 输入知乎个人主页或收藏夹地址，点击“开始同步”。
+
+知藏不能也不会读取手机上知乎 App 的 Cookie。登录会话只保存在知藏自己的 Android WebView 中；同步请求也由手机直接发往 `www.zhihu.com`。点击“退出知乎”会清除知藏中的登录会话，但保留已经同步的收藏、阅读进度与浏览历史。
+
+构建需要 Node.js、完整 JDK 21 和 Android SDK Platform 36。Android Studio 不是生成 APK 的必需项；只有需要图形化调试、模拟器或直接打开工程时才需要安装。
+
+在 Windows 项目根目录执行：
+
+```powershell
+npm install
+npm run mobile:apk
+```
+
+构建脚本会先生成移动端 Web 资源、同步 Capacitor 工程，再编译调试 APK。成功后安装包位于：
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+连接已开启 USB 调试的 Android 手机后，可以安装：
+
+```powershell
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Windows 构建脚本会优先复用 `D:\Android\Jdk\21`、`D:\Android\Sdk` 和 `D:\Android\Gradle`，找不到时再读取 `JAVA_HOME`、`ANDROID_HOME` 和 `GRADLE_USER_HOME`。如果检测到本机 `127.0.0.1:7890` 代理，会仅为本次 Gradle 下载临时启用该代理。
+
+需要使用 Android Studio 时执行：
+
+```powershell
+npm run mobile:android
+```
+
+当前登录同步依赖知乎网页会话和非公开网页接口，并不等同于知乎官方 OAuth 授权。知乎若更改登录流程或接口，移动端适配也需要相应更新。
+
 ## 隐私与限制
 
 - 不收集或上传收藏内容、Cookie、Obsidian 路径。
@@ -72,6 +140,7 @@ Markdown 转换使用 MIT 许可的 [Turndown](https://github.com/mixmark-io/tur
 ```powershell
 npm test
 npm run check
+npm run mobile:apk
 ```
 
-扩展不依赖打包器或第三方运行时库，修改后在扩展管理页点击“重新加载”即可。
+浏览器扩展不依赖打包器，修改后在扩展管理页点击“重新加载”即可。Android 工程通过 Capacitor 构建，首次下载依赖较慢，之后会复用 Gradle 缓存。

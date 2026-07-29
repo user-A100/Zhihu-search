@@ -1,0 +1,9 @@
+{
+  "appId": "com.zhicang.reader",
+  "appName": "知藏",
+  "webDir": "mobile-dist",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#f3f7f7"
+  }
+}

@@ -5,10 +5,21 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
-    "check": "node --check src/background.js && node --check src/content-marker.js && node --check src/dashboard.js && node --check src/lib.js && node --check src/obsidian.js && node --check src/boot-guard.js"
+    "check": "node --check src/background.js && node --check src/content-marker.js && node --check src/dashboard.js && node --check src/mobile-runtime.js && node --check src/preview-runtime.js && node --check src/mobile.js && node --check src/lib.js && node --check src/obsidian.js && node --check src/boot-guard.js && node --check scripts/build-mobile.mjs",
+    "preview:mobile": "python -m http.server 4173",
+    "mobile:build:web": "node scripts/build-mobile.mjs",
+    "mobile:sync": "npm run mobile:build:web && npx cap sync android",
+    "mobile:android": "npx cap open android",
+    "mobile:apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/preferences": "^8.0.1",
     "turndown": "^7.2.1",
     "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.2"
   }
 }

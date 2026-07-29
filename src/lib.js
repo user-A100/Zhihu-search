@@ -49,6 +49,12 @@ function stripHtml(value) {
   return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
 }
 
+function timestampToMs(value) {
+  const number = Number(value || 0);
+  if (!number) return 0;
+  return number > 1e12 ? number : number * 1000;
+}
+
 function parseCollectionItem(entry, collection) {
   const content = entry?.content || entry || {};
   const type = content.type || entry?.type || "unknown";
@@ -70,6 +76,12 @@ function parseCollectionItem(entry, collection) {
   const normalizedUrl = normalizeZhihuUrl(url);
   const htmlContent = String(content.content || content.detail || "");
   const fullText = stripHtml(htmlContent);
+  const collectedAt = timestampToMs(
+    entry?.created_time ||
+    entry?.created ||
+    entry?.collected_time ||
+    content.collected_time
+  );
 
   return {
     id: `${type}:${content.id || normalizedUrl}`,
@@ -82,6 +94,7 @@ function parseCollectionItem(entry, collection) {
     url: normalizedUrl,
     collectionIds: [String(collection.id)],
     collectionTitles: [collection.title],
+    collectedAt,
     updatedAt: Number(content.updated_time || content.updated || content.created_time || 0) * 1000
   };
 }
@@ -99,9 +112,37 @@ function mergeIndexedItems(items) {
     current.collectionIds = [...new Set([...current.collectionIds, ...item.collectionIds])];
     current.collectionTitles = [...new Set([...current.collectionTitles, ...item.collectionTitles])];
     if (!current.fullText && item.fullText) current.fullText = item.fullText;
+    if ((item.collectedAt || 0) > (current.collectedAt || 0)) current.collectedAt = item.collectedAt;
+    if (
+      Number.isFinite(item.collectedOrder) &&
+      (!Number.isFinite(current.collectedOrder) || item.collectedOrder < current.collectedOrder)
+    ) {
+      current.collectedOrder = item.collectedOrder;
+    }
     if (item.updatedAt > current.updatedAt) current.updatedAt = item.updatedAt;
   }
   return [...merged.values()];
+}
+
+function sortByCollectionOrder(items) {
+  return [...(items || [])].sort((a, b) => {
+    const aCollectedAt = Number(a.collectedAt || 0);
+    const bCollectedAt = Number(b.collectedAt || 0);
+    if (aCollectedAt || bCollectedAt) {
+      const aTime = aCollectedAt || Number(a.updatedAt || 0);
+      const bTime = bCollectedAt || Number(b.updatedAt || 0);
+      if (aTime !== bTime) return bTime - aTime;
+    }
+
+    const aOrder = Number.isFinite(a.collectedOrder) ? a.collectedOrder : Number.MAX_SAFE_INTEGER;
+    const bOrder = Number.isFinite(b.collectedOrder) ? b.collectedOrder : Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    const aUpdatedAt = Number(a.updatedAt || 0);
+    const bUpdatedAt = Number(b.updatedAt || 0);
+    if (aUpdatedAt !== bUpdatedAt) return bUpdatedAt - aUpdatedAt;
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  });
 }
 
 function matchesSearch(item, query) {
@@ -210,6 +251,7 @@ globalThis.ZhicangLib = {
   normalizeZhihuUrl,
   paginateItems,
   parseCollectionItem,
+  sortByCollectionOrder,
   stripHtml
 };
 })();

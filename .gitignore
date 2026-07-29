@@ -4,3 +4,4 @@ legacy_app/
 node_modules/
 .DS_Store
 Thumbs.db
+mobile-dist/

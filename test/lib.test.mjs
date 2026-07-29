@@ -9,7 +9,8 @@ const {
   matchesSearch,
   mergeIndexedItems,
   normalizeZhihuUrl,
-  paginateItems
+  paginateItems,
+  sortByCollectionOrder
 } = globalThis.ZhicangLib;
 
 test("extracts a Zhihu profile token from common inputs", () => {
@@ -99,4 +100,17 @@ test("deduplicates the same URL while preserving collection membership", () => {
   assert.deepEqual(result[0].collectionTitles, ["甲", "乙"]);
   assert.equal(result[0].fullText, "正文");
   assert.equal(result[0].updatedAt, 2);
+});
+
+test("sorts the library by collection time and stable API order", () => {
+  const rows = [
+    { id: "older", collectedAt: 100, collectedOrder: 0 },
+    { id: "same-second-later", collectedAt: 200, collectedOrder: 2 },
+    { id: "same-second-first", collectedAt: 200, collectedOrder: 1 },
+    { id: "fallback", updatedAt: 150 }
+  ];
+  assert.deepEqual(
+    sortByCollectionOrder(rows).map((item) => item.id),
+    ["same-second-first", "same-second-later", "fallback", "older"]
+  );
 });
