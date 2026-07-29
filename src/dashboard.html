@@ -34,7 +34,13 @@
             多级搜索
           </button>
         </div>
-        <button class="quiet-button" id="settingsButton" type="button">同步设置</button>
+        <div class="masthead-actions">
+          <button class="outline-button mobile-export-button" id="mobileExportButton" type="button" disabled>
+            <span class="transfer-mark" aria-hidden="true">包</span>
+            <span>导出到手机</span>
+          </button>
+          <button class="quiet-button" id="settingsButton" type="button">同步设置</button>
+        </div>
       </header>
 
       <main>
@@ -212,11 +218,11 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="./preview-runtime.js?v=3"></script>
-    <script src="./lib.js?v=4"></script>
+    <script src="./lib.js?v=7"></script>
     <script src="./vendor/turndown/turndown.js"></script>
     <script src="./vendor/turndown/turndown-plugin-gfm.js"></script>
     <script src="./obsidian.js?v=4"></script>
-    <script src="./dashboard.js?v=11"></script>
+    <script src="./dashboard.js?v=12"></script>
     <script src="./boot-guard.js"></script>
   </body>
 </html>

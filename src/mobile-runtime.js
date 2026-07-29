@@ -78,35 +78,4 @@
     };
   }
 
-  const sessionPlugin = () => nativePlugins().ZhihuSession || null;
-  globalThis.ZhicangNative = {
-    isNative: Boolean(globalThis.Capacitor?.isNativePlatform?.()),
-    isAvailable() {
-      return Boolean(sessionPlugin());
-    },
-    async getSessionStatus() {
-      const plugin = sessionPlugin();
-      return plugin ? plugin.getSessionStatus() : { loggedIn: false };
-    },
-    async openLogin() {
-      const plugin = sessionPlugin();
-      if (!plugin) throw new Error("当前版本未连接知乎登录组件。");
-      return plugin.openLogin({ url: "https://www.zhihu.com/signin" });
-    },
-    async clearSession() {
-      const plugin = sessionPlugin();
-      if (!plugin) return { loggedIn: false };
-      return plugin.clearSession();
-    },
-    async requestJson(url) {
-      const plugin = sessionPlugin();
-      if (!plugin) throw new Error("当前版本未连接知乎登录组件。");
-      const response = await plugin.request({ url });
-      return {
-        ok: Boolean(response.ok),
-        status: Number(response.status || 0),
-        body: String(response.body || "")
-      };
-    }
-  };
 })();

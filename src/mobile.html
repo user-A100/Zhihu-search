@@ -21,11 +21,11 @@
             <small>私人收藏阅览室</small>
           </span>
         </button>
-        <button class="header-action" id="openSyncButton" type="button" aria-label="同步收藏">
+        <button class="header-action" id="openImportButton" type="button" aria-label="载入知藏数据">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20 7h-4V3M4 17h4v4M5.2 9A7.5 7.5 0 0 1 17.8 5.8L20 7M4 17l2.2 1.2A7.5 7.5 0 0 0 18.8 15" />
+            <path d="M12 3v11m0 0 4-4m-4 4-4-4M4 17v3h16v-3" />
           </svg>
-          <span>同步</span>
+          <span>载入</span>
         </button>
       </header>
 
@@ -35,8 +35,8 @@
             <span class="onboarding-seal" aria-hidden="true">藏</span>
             <p class="section-label">你的私人阅览室</p>
             <h1 id="homeHeading">让收藏不再只是收藏</h1>
-            <p>同步知乎收藏夹，知藏会把它们整理成一座安静、可搜索的移动书库。</p>
-            <button class="primary-action" id="emptySyncButton" type="button">同步我的收藏</button>
+            <p>从电脑知藏导出收藏数据包，再把它载入这里，一座安静、可搜索的移动书库就准备好了。</p>
+            <button class="primary-action" id="emptyImportButton" type="button">载入我的收藏</button>
           </div>
 
           <div id="homeContent">
@@ -166,8 +166,8 @@
             <div><strong id="profileCollectionCount">0</strong><span>个书架</span></div>
           </div>
           <div class="settings-list">
-            <button id="profileSyncButton" type="button">
-              <span><b>同步知乎收藏</b><small id="profileSyncStatus">尚未同步</small></span>
+            <button id="profileImportButton" type="button">
+              <span><b>载入收藏数据包</b><small id="profileImportStatus">尚未载入</small></span>
               <i aria-hidden="true">›</i>
             </button>
             <button id="clearReadingButton" type="button">
@@ -189,7 +189,7 @@
               <p>打开过的收藏会出现在这里。</p>
             </div>
           </section>
-          <p class="privacy-note">知藏不会上传收藏正文、知乎 Cookie 或阅读记录。</p>
+          <p class="privacy-note">知藏不会上传收藏正文或阅读记录，数据包只在你选择的设备之间流转。</p>
         </section>
       </main>
 
@@ -243,40 +243,31 @@
       </div>
     </section>
 
-    <dialog class="sheet-dialog" id="syncDialog">
-      <form id="syncForm" method="dialog">
+    <dialog class="sheet-dialog" id="importDialog">
+      <form id="importForm" method="dialog">
         <div class="sheet-handle" aria-hidden="true"></div>
         <div class="sheet-head">
           <div>
-            <p class="section-label">更新书库</p>
-            <h2>同步知乎收藏</h2>
+            <p class="section-label">装入数据包</p>
+            <h2>载入收藏库</h2>
           </div>
           <button class="sheet-close" value="cancel" type="submit" aria-label="关闭">×</button>
         </div>
-        <label class="sheet-field">
-          <span>个人主页或收藏夹地址</span>
-          <input id="mobileProfileInput" required placeholder="https://www.zhihu.com/people/用户名" />
-          <small>知藏只使用本机登录会话读取收藏，不保存账号和密码。</small>
+        <p class="archive-route">
+          先在电脑知藏完成同步，点击右上角“导出到手机”，再选择得到的 JSON 文件。
+        </p>
+        <label class="archive-picker" id="archivePackageCard">
+          <input id="mobileArchiveInput" type="file" accept=".json,application/json" />
+          <span class="archive-file-mark" aria-hidden="true"><b>JSON</b><i>知藏</i></span>
+          <span class="archive-file-copy">
+            <strong id="archivePackageTitle">选择知藏数据包</strong>
+            <small id="archivePackageMeta">从电脑导出的收藏库文件</small>
+          </span>
+          <span class="archive-file-action">选择</span>
         </label>
-        <div class="native-session" id="nativeSessionPanel" hidden>
-          <div class="native-session-status">
-            <span id="nativeSessionDot" aria-hidden="true"></span>
-            <div>
-              <strong id="nativeSessionTitle">尚未登录知乎</strong>
-              <small id="nativeSessionDescription">登录后才能同步有权限查看的收藏夹。</small>
-            </div>
-          </div>
-          <div class="native-session-actions">
-            <button id="nativeLoginButton" type="button">在知藏中登录知乎</button>
-            <button id="nativeLogoutButton" type="button" hidden>退出并清除登录</button>
-          </div>
-        </div>
-        <div id="mobileSyncProgress" class="sync-progress" hidden>
-          <span><i id="mobileSyncProgressBar"></i></span>
-          <p id="mobileSyncProgressText">准备同步…</p>
-        </div>
-        <p class="sheet-error" id="mobileSyncError" role="alert" hidden></p>
-        <button class="primary-action full" id="mobileSyncButton" type="submit">开始同步</button>
+        <p class="archive-preserve">载入新数据包会更新收藏库，并保留本机的阅读进度与浏览历史。</p>
+        <p class="sheet-error" id="mobileImportError" role="alert" hidden></p>
+        <button class="primary-action full" id="mobileImportButton" type="submit" disabled>载入收藏库</button>
       </form>
     </dialog>
 
@@ -323,10 +314,10 @@
     </template>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./mobile-runtime.js?v=1"></script>
+    <script src="./mobile-runtime.js?v=2"></script>
     <script src="./preview-runtime.js?v=3"></script>
-    <script src="./lib.js?v=6"></script>
-    <script src="./mobile.js?v=2"></script>
+    <script src="./lib.js?v=7"></script>
+    <script src="./mobile.js?v=3"></script>
     <script src="./boot-guard.js"></script>
   </body>
 </html>

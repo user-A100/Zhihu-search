@@ -1,4 +1,5 @@
 const {
+  createPortableLibrary,
   extractCollectionId,
   extractProfileToken,
   formatDate,
@@ -29,7 +30,7 @@ const state = {
 
 const els = Object.fromEntries(
   [
-    "settingsButton", "searchInput", "totalCount", "allCount", "unclippedCount",
+    "settingsButton", "mobileExportButton", "searchInput", "totalCount", "allCount", "unclippedCount",
     "clippedCount", "collectionFilter", "pageSizeSelect", "resultSummary", "emptyState",
     "emptySettingsButton", "advancedSearchToggle", "advancedSearchSection", "advancedSearchPanel",
     "conditionList", "conditionTemplate", "addConditionButton",
@@ -208,6 +209,7 @@ function scrollToResults() {
 
 function render() {
   updateCounts();
+  els.mobileExportButton.disabled = state.items.length === 0;
   const items = visibleItems();
   const pagination = paginateItems(items, state.page, state.pageSize);
   state.page = pagination.page;
@@ -374,6 +376,38 @@ function showToast(message) {
   showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2200);
 }
 
+function portableLibraryFilename(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `知藏收藏-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.json`;
+}
+
+function exportPortableLibrary() {
+  if (!state.items.length) {
+    showToast("请先同步收藏，再导出手机数据包");
+    return;
+  }
+
+  const exportedAt = Date.now();
+  const archive = createPortableLibrary({
+    items: state.items,
+    profile: state.profile,
+    indexedAt: state.indexedAt,
+    exportedAt
+  });
+  const filename = portableLibraryFilename(exportedAt);
+  const blob = new Blob([JSON.stringify(archive)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`已导出 ${archive.itemCount} 篇收藏 · ${filename}`);
+}
+
 function setProgress(current, total, text) {
   const percentage = total
     ? Math.max(0, Math.min(100, Math.round((current / total) * 100)))
@@ -506,6 +540,7 @@ function openSettings() {
 }
 
 els.settingsButton.addEventListener("click", openSettings);
+els.mobileExportButton.addEventListener("click", exportPortableLibrary);
 els.emptySettingsButton.addEventListener("click", openSettings);
 els.obsidianDirectoryButton.addEventListener("click", async () => {
   els.obsidianDirectoryError.hidden = true;

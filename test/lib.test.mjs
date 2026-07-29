@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import "../src/lib.js";
 
 const {
+  createPortableLibrary,
   extractCollectionId,
   extractProfileToken,
   matchesAdvancedSearch,
@@ -10,6 +11,7 @@ const {
   mergeIndexedItems,
   normalizeZhihuUrl,
   paginateItems,
+  parsePortableLibrary,
   sortByCollectionOrder
 } = globalThis.ZhicangLib;
 
@@ -113,4 +115,60 @@ test("sorts the library by collection time and stable API order", () => {
     sortByCollectionOrder(rows).map((item) => item.id),
     ["same-second-first", "same-second-later", "fallback", "older"]
   );
+});
+
+test("creates and parses a versioned portable library", () => {
+  const archive = createPortableLibrary({
+    items: [{
+      id: "answer:42",
+      type: "answer",
+      title: "会带到手机的收藏",
+      author: "知友",
+      excerpt: "摘要",
+      fullText: "正文",
+      htmlContent: "<p>正文</p>",
+      url: "https://www.zhihu.com/question/1/answer/42",
+      collectionIds: ["9"],
+      collectionTitles: ["稍后阅读"],
+      collectedAt: 123,
+      collectedOrder: 4,
+      updatedAt: 456
+    }],
+    profile: "demo-user",
+    indexedAt: 1000,
+    exportedAt: 2000
+  });
+  const parsed = parsePortableLibrary(JSON.stringify(archive));
+
+  assert.equal(archive.format, "zhicang-portable-library");
+  assert.equal(archive.version, 1);
+  assert.equal(parsed.itemCount, 1);
+  assert.equal(parsed.profile, "demo-user");
+  assert.equal(parsed.items[0].htmlContent, "<p>正文</p>");
+  assert.equal(parsed.items[0].collectedOrder, 4);
+});
+
+test("rejects arbitrary, empty and unsupported portable files", () => {
+  assert.throws(() => parsePortableLibrary("{bad json"), /有效的 JSON/);
+  assert.throws(() => parsePortableLibrary({ items: [{}] }), /不是由知藏导出/);
+  assert.throws(() => parsePortableLibrary({
+    format: "zhicang-portable-library",
+    version: 2,
+    items: [{ id: "1" }]
+  }), /暂不支持版本 2/);
+  assert.throws(() => parsePortableLibrary({
+    format: "zhicang-portable-library",
+    version: 1,
+    items: []
+  }), /没有可载入/);
+});
+
+test("strips non-HTTP source URLs from portable items", () => {
+  const parsed = parsePortableLibrary({
+    format: "zhicang-portable-library",
+    version: 1,
+    items: [{ id: "unsafe", title: "不安全地址", url: "javascript:alert(1)" }]
+  });
+
+  assert.equal(parsed.items[0].url, "");
 });

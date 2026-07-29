@@ -1,11 +1,8 @@
 (() => {
   const {
-    extractCollectionId,
-    extractProfileToken,
     formatDate,
     matchesSearch,
-    mergeIndexedItems,
-    parseCollectionItem,
+    parsePortableLibrary,
     sortByCollectionOrder
   } = globalThis.ZhicangLib;
 
@@ -16,11 +13,8 @@
   );
   if (!storageApi?.local) throw new Error("没有可用的本地存储。");
   const storage = storageApi.local;
-  const nativeSession = globalThis.ZhicangNative || {
-    isNative: false,
-    isAvailable: () => false
-  };
   const isDemo = new URLSearchParams(location.search).has("demo");
+  const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024;
   const TYPE_LABELS = { answer: "回答", article: "文章", pin: "想法" };
   const DEMO_ITEMS = createDemoItems();
   const state = {
@@ -34,30 +28,28 @@
     activeCollection: "",
     recommendationIds: [],
     recommendationExposure: {},
-    nativeLoggedIn: false,
+    pendingArchive: null,
     readerItem: null,
     fontSize: 18,
     saveTimer: 0
   };
 
   const ids = [
-    "homeLogo", "openSyncButton", "homeEmpty", "homeContent", "emptySyncButton",
+    "homeLogo", "openImportButton", "homeEmpty", "homeContent", "emptyImportButton",
     "dailyCard", "dailyNumber", "dailyMeta", "dailyTitle", "dailyExcerpt", "dailyReadButton",
     "shuffleButton", "continueSection", "continueCard", "continueCollection", "continueTitle",
     "continueProgress", "continuePercent", "recommendationFeed", "refreshRecommendationsButton",
     "moreRecommendationsButton", "librarySummary", "activeCollectionLabel",
     "libraryCollectionFilters", "libraryItemList", "mobileSearchInput", "clearSearchButton",
     "searchChips", "searchSummary", "searchResults", "searchPlaceholder",
-    "profileItemCount", "profileReadCount", "profileCollectionCount", "profileSyncButton",
-    "profileSyncStatus", "clearReadingButton", "clearHistoryButton", "historyList", "historyEmpty",
+    "profileItemCount", "profileReadCount", "profileCollectionCount", "profileImportButton",
+    "profileImportStatus", "clearReadingButton", "clearHistoryButton", "historyList", "historyEmpty",
     "reader", "readerProgressBar",
     "readerHeaderCollection", "readerSourceLink", "closeReaderButton", "readerScroller",
     "readerType", "readerDate", "readerTitle", "readerByline", "readerBody", "readerMarkButton",
-    "readerPercent", "fontDecreaseButton", "fontIncreaseButton", "syncDialog", "syncForm",
-    "mobileProfileInput", "mobileSyncProgress", "mobileSyncProgressBar",
-    "mobileSyncProgressText", "mobileSyncError", "mobileSyncButton",
-    "nativeSessionPanel", "nativeSessionDot", "nativeSessionTitle",
-    "nativeSessionDescription", "nativeLoginButton", "nativeLogoutButton", "toast",
+    "readerPercent", "fontDecreaseButton", "fontIncreaseButton", "importDialog", "importForm",
+    "mobileArchiveInput", "archivePackageCard", "archivePackageTitle", "archivePackageMeta",
+    "mobileImportError", "mobileImportButton", "toast",
     "mobileItemTemplate", "recommendationTemplate", "historyItemTemplate"
   ];
   const els = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
@@ -451,9 +443,9 @@
     els.profileItemCount.textContent = String(state.items.length);
     els.profileReadCount.textContent = String(state.items.filter((item) => readRatio(item) >= .94).length);
     els.profileCollectionCount.textContent = String(list.length);
-    els.profileSyncStatus.textContent = state.indexedAt
-      ? `上次同步 ${formatDate(state.indexedAt)}`
-      : "尚未同步";
+    els.profileImportStatus.textContent = state.indexedAt
+      ? `上次载入 ${formatDate(state.indexedAt)}`
+      : "尚未载入";
 
     const historyItems = state.items
       .filter((item) => readingFor(item).lastReadAt)
@@ -507,6 +499,19 @@
       [...node.attributes].forEach((attribute) => {
         if (/^on/i.test(attribute.name) || attribute.name === "style") node.removeAttribute(attribute.name);
       });
+    });
+    doc.querySelectorAll("[href], [src]").forEach((node) => {
+      for (const attribute of ["href", "src"]) {
+        const value = node.getAttribute(attribute);
+        if (!value) continue;
+        try {
+          const url = new URL(value, "https://www.zhihu.com/");
+          if (!["http:", "https:"].includes(url.protocol)) node.removeAttribute(attribute);
+          else node.setAttribute(attribute, url.href);
+        } catch {
+          node.removeAttribute(attribute);
+        }
+      }
     });
     doc.querySelectorAll("a").forEach((link) => {
       link.target = "_blank";
@@ -599,121 +604,43 @@
     showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2200);
   }
 
-  async function refreshNativeSessionStatus() {
-    const available = nativeSession.isNative && nativeSession.isAvailable();
-    els.nativeSessionPanel.hidden = !available;
-    if (!available) return false;
-
-    try {
-      const status = await nativeSession.getSessionStatus();
-      state.nativeLoggedIn = Boolean(status.loggedIn);
-      els.nativeSessionDot.dataset.active = String(state.nativeLoggedIn);
-      els.nativeSessionTitle.textContent = state.nativeLoggedIn ? "已登录知乎" : "尚未登录知乎";
-      els.nativeSessionDescription.textContent = state.nativeLoggedIn
-        ? "登录信息只保存在这台手机，可直接开始同步。"
-        : "登录后才能同步有权限查看的收藏夹。";
-      els.nativeLoginButton.textContent = state.nativeLoggedIn ? "重新登录" : "在知藏中登录知乎";
-      els.nativeLogoutButton.hidden = !state.nativeLoggedIn;
-      return state.nativeLoggedIn;
-    } catch (error) {
-      state.nativeLoggedIn = false;
-      els.nativeSessionDot.dataset.active = "false";
-      els.nativeSessionTitle.textContent = "无法读取登录状态";
-      els.nativeSessionDescription.textContent = error.message || "请重新打开登录页面。";
-      els.nativeLogoutButton.hidden = true;
-      return false;
-    }
+  function formatFileSize(bytes) {
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function openSync() {
-    els.mobileProfileInput.value = state.profile;
-    els.mobileSyncError.hidden = true;
-    els.mobileSyncProgress.hidden = true;
-    els.syncDialog.showModal();
-    refreshNativeSessionStatus();
-    setTimeout(() => els.mobileProfileInput.focus(), 80);
+  function resetImportSelection() {
+    state.pendingArchive = null;
+    els.mobileArchiveInput.value = "";
+    els.archivePackageCard.dataset.ready = "false";
+    els.archivePackageTitle.textContent = "选择知藏数据包";
+    els.archivePackageMeta.textContent = "从电脑导出的收藏库文件";
+    els.mobileImportButton.disabled = true;
+    els.mobileImportButton.textContent = "载入收藏库";
   }
 
-  async function fetchJson(url) {
-    if (nativeSession.isNative && nativeSession.isAvailable()) {
-      const nativeResponse = await nativeSession.requestJson(url);
-      if (!nativeResponse.ok) {
-        const error = new Error(`知乎接口返回 ${nativeResponse.status}`);
-        error.status = nativeResponse.status;
-        throw error;
-      }
-      return JSON.parse(nativeResponse.body);
-    }
-
-    const response = await fetch(url, { credentials: "include", headers: { Accept: "application/json" } });
-    if (!response.ok) {
-      const error = new Error(`知乎接口返回 ${response.status}`);
-      error.status = response.status;
-      throw error;
-    }
-    return response.json();
+  function openImport() {
+    resetImportSelection();
+    els.mobileImportError.hidden = true;
+    els.importDialog.showModal();
   }
 
-  function setSyncProgress(current, total, text) {
-    const percent = Math.round((current / Math.max(1, total)) * 100);
-    els.mobileSyncProgress.hidden = false;
-    els.mobileSyncProgressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-    els.mobileSyncProgressText.textContent = `${text} · ${percent}%`;
-  }
-
-  async function fetchAllPages(urlFactory, onPage) {
-    const rows = [];
-    for (let offset = 0, page = 0; page < 500; page += 1, offset += 20) {
-      const payload = await fetchJson(urlFactory(offset, 20));
-      rows.push(...(payload.data || []));
-      onPage?.(rows.length, payload.paging?.totals || rows.length);
-      if (payload.paging?.is_end || !(payload.data || []).length) break;
+  async function prepareArchive(file) {
+    resetImportSelection();
+    els.mobileImportError.hidden = true;
+    if (!file) return;
+    if (file.size > MAX_ARCHIVE_BYTES) {
+      throw new Error("数据包超过 100 MB，请确认选择的是知藏导出的 JSON 文件。");
     }
-    return rows;
-  }
 
-  async function syncCollections(input) {
-    const collectionId = extractCollectionId(input);
-    const token = extractProfileToken(input);
-    if (!collectionId && !token) throw new Error("请输入有效的知乎个人主页或收藏夹地址。");
-    setSyncProgress(0, 1, "正在读取收藏夹");
-    let sourceCollections;
-    if (collectionId) {
-      const payload = await fetchJson(`https://www.zhihu.com/api/v4/collections/${collectionId}`);
-      const detail = payload.collection || payload;
-      sourceCollections = [{ id: String(detail.id || collectionId), title: detail.title || `收藏夹 ${collectionId}` }];
-    } else {
-      sourceCollections = await fetchAllPages(
-        (offset, limit) => `https://www.zhihu.com/api/v4/members/${encodeURIComponent(token)}/favlists?offset=${offset}&limit=${limit}`,
-        (current, total) => setSyncProgress(current, total, `已发现 ${current} 个收藏夹`)
-      );
-    }
-    if (!sourceCollections.length) throw new Error("没有找到可读取的收藏夹。");
-
-    const parsed = [];
-    for (let index = 0; index < sourceCollections.length; index += 1) {
-      const collection = sourceCollections[index];
-      const entries = await fetchAllPages(
-        (offset, limit) => `https://www.zhihu.com/api/v4/collections/${collection.id}/items?offset=${offset}&limit=${limit}`,
-        (current, total) => setSyncProgress(
-          index + current / Math.max(total, 1),
-          sourceCollections.length,
-          `正在同步 ${collection.title} ${current}/${total}`
-        )
-      );
-      for (const entry of entries) {
-        try {
-          const item = parseCollectionItem(entry, collection);
-          if (item.url) {
-            item.collectedOrder = parsed.length;
-            parsed.push(item);
-          }
-        } catch (error) {
-          console.warn("跳过无法解析的收藏内容", error);
-        }
-      }
-    }
-    return mergeIndexedItems(parsed);
+    const archive = parsePortableLibrary(await file.text());
+    state.pendingArchive = archive;
+    els.archivePackageCard.dataset.ready = "true";
+    els.archivePackageTitle.textContent = file.name;
+    const exportedText = archive.exportedAt ? `导出于 ${formatDate(archive.exportedAt)}` : "导出时间未知";
+    els.archivePackageMeta.textContent = `${archive.itemCount.toLocaleString("zh-CN")} 篇收藏 · ${exportedText} · ${formatFileSize(file.size)}`;
+    els.mobileImportButton.disabled = false;
+    els.mobileImportButton.textContent = `载入 ${archive.itemCount.toLocaleString("zh-CN")} 篇收藏`;
   }
 
   els.homeLogo.addEventListener("click", () => showScreen("home"));
@@ -723,28 +650,16 @@
   document.querySelectorAll("[data-screen-target]").forEach((button) => {
     button.addEventListener("click", () => showScreen(button.dataset.screenTarget));
   });
-  [els.openSyncButton, els.emptySyncButton, els.profileSyncButton].forEach((button) => {
-    button.addEventListener("click", openSync);
+  [els.openImportButton, els.emptyImportButton, els.profileImportButton].forEach((button) => {
+    button.addEventListener("click", openImport);
   });
-  els.nativeLoginButton.addEventListener("click", async () => {
-    els.nativeLoginButton.disabled = true;
-    els.nativeLoginButton.textContent = "正在打开知乎…";
+  els.mobileArchiveInput.addEventListener("change", async () => {
     try {
-      const result = await nativeSession.openLogin();
-      await refreshNativeSessionStatus();
-      if (result.loggedIn) showToast("知乎登录完成");
+      await prepareArchive(els.mobileArchiveInput.files?.[0]);
     } catch (error) {
-      els.mobileSyncError.hidden = false;
-      els.mobileSyncError.textContent = error.message || "无法打开知乎登录页面。";
-    } finally {
-      els.nativeLoginButton.disabled = false;
+      els.mobileImportError.hidden = false;
+      els.mobileImportError.textContent = error.message || "无法读取这个数据包。";
     }
-  });
-  els.nativeLogoutButton.addEventListener("click", async () => {
-    if (!confirm("退出知乎并清除知藏中的登录信息？收藏索引和阅读历史会保留。")) return;
-    await nativeSession.clearSession();
-    await refreshNativeSessionStatus();
-    showToast("知乎登录信息已清除");
   });
   [els.shuffleButton, els.refreshRecommendationsButton, els.moreRecommendationsButton].forEach((button) => {
     button.addEventListener("click", () => {
@@ -807,35 +722,34 @@
     renderProfile();
     showToast("浏览历史已清空");
   });
-  els.syncForm.addEventListener("submit", async (event) => {
+  els.importForm.addEventListener("submit", async (event) => {
     if (event.submitter?.value === "cancel") return;
     event.preventDefault();
-    els.mobileSyncError.hidden = true;
-    els.mobileSyncButton.disabled = true;
-    els.mobileSyncButton.textContent = "同步中…";
+    if (!state.pendingArchive) return;
+    els.mobileImportError.hidden = true;
+    els.mobileImportButton.disabled = true;
+    els.mobileImportButton.textContent = "正在载入…";
     try {
-      if (nativeSession.isNative && nativeSession.isAvailable() && !state.nativeLoggedIn) {
-        throw new Error("请先在知藏中登录知乎。");
-      }
-      const items = await syncCollections(els.mobileProfileInput.value);
+      const archive = state.pendingArchive;
       const indexedAt = Date.now();
-      state.items = items;
-      state.profile = els.mobileProfileInput.value.trim();
+      state.items = archive.items;
+      state.profile = archive.profile;
       state.indexedAt = indexedAt;
-      await storage.set({ items, profile: state.profile, indexedAt });
+      await storage.set({ items: state.items, profile: state.profile, indexedAt });
       state.recommendationIds = [];
       refreshRecommendations();
       render();
-      els.syncDialog.close();
-      showToast(`已同步 ${items.length} 篇收藏`);
+      els.importDialog.close();
+      showScreen("home");
+      showToast(`已载入 ${state.items.length} 篇收藏，阅读记录已保留`);
     } catch (error) {
-      els.mobileSyncError.hidden = false;
-      els.mobileSyncError.textContent = error.status === 401
-        ? "知乎拒绝了读取请求。请先登录知乎，再重新同步。"
-        : `${error.message || "同步失败"} 如果出现验证码，请先在知乎完成验证。`;
+      els.mobileImportError.hidden = false;
+      els.mobileImportError.textContent = error.message || "载入失败，请重新选择数据包。";
     } finally {
-      els.mobileSyncButton.disabled = false;
-      els.mobileSyncButton.textContent = "开始同步";
+      if (state.pendingArchive) {
+        els.mobileImportButton.disabled = false;
+        els.mobileImportButton.textContent = `载入 ${state.pendingArchive.itemCount.toLocaleString("zh-CN")} 篇收藏`;
+      }
     }
   });
   addEventListener("popstate", () => {

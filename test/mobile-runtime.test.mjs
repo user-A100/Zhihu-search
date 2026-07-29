@@ -31,7 +31,7 @@ test("preview storage does not replace native app storage", () => {
   assert.equal(context.zhicangPreviewStorage, undefined);
 });
 
-test("mobile runtime uses Capacitor Preferences and the native session plugin", async () => {
+test("mobile runtime uses Capacitor Preferences without exposing a Zhihu session bridge", async () => {
   let serialized = "";
   const context = runRuntime(mobileRuntimeSource, {
     localStorage: {
@@ -46,10 +46,6 @@ test("mobile runtime uses Capacitor Preferences and the native session plugin", 
           set: async ({ value }) => {
             serialized = value;
           }
-        },
-        ZhihuSession: {
-          getSessionStatus: async () => ({ loggedIn: true }),
-          request: async () => ({ ok: true, status: 200, body: "{\"data\":[]}" })
         }
       }
     }
@@ -57,11 +53,7 @@ test("mobile runtime uses Capacitor Preferences and the native session plugin", 
 
   await context.zhicangMobileStorage.local.set({ profile: "demo-user" });
   const stored = await context.zhicangMobileStorage.local.get(["profile"]);
-  const session = await context.ZhicangNative.getSessionStatus();
-  const response = await context.ZhicangNative.requestJson("https://www.zhihu.com/api/v4/collections/1");
 
   assert.equal(stored.profile, "demo-user");
-  assert.equal(session.loggedIn, true);
-  assert.equal(response.status, 200);
-  assert.equal(response.body, "{\"data\":[]}");
+  assert.equal(context.ZhicangNative, undefined);
 });

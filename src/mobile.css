@@ -655,6 +655,12 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   box-shadow: 0 12px 28px rgba(16, 42, 50, .18);
 }
 
+.primary-action:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .primary-action.full { width: 100%; margin-top: 18px; }
 
 .screen-title,
@@ -1336,83 +1342,107 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .sheet-head h2 { margin: 0; font: 700 26px/1.2 "STKaiti", "KaiTi", serif; }
 .sheet-close { width: 38px; height: 38px; border: 0; color: var(--muted); background: transparent; font-size: 26px; cursor: pointer; }
 
-.sheet-field { display: grid; gap: 8px; margin-top: 25px; }
-.sheet-field > span { font-size: 10px; font-weight: 800; }
-.sheet-field input { width: 100%; height: 48px; padding: 0 13px; border: 1px solid var(--line); border-radius: 10px 10px 10px 3px; color: var(--ink); background: var(--paper); outline: 0; font-size: 11px; }
-.sheet-field small { color: var(--muted); font-size: 8px; line-height: 1.65; }
+.archive-route {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.7;
+}
 
-.native-session {
-  margin-top: 18px;
-  padding: 15px;
+.archive-picker {
+  display: grid;
+  min-height: 98px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  margin-top: 16px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 4px 13px 13px 4px;
   background: var(--paper);
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
 }
 
-.native-session-status {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-}
-
-.native-session-status > span {
-  width: 8px;
-  height: 8px;
-  margin-top: 3px;
-  border: 2px solid var(--muted);
-  border-radius: 50%;
-}
-
-.native-session-status > span[data-active="true"] {
-  background: var(--jade);
+.archive-picker[data-ready="true"] {
   border-color: var(--jade);
-  box-shadow: 0 0 0 4px rgba(94, 141, 128, .14);
+  background: #eef5f2;
 }
 
-.native-session-status div {
+.archive-picker:focus-within {
+  outline: 2px solid var(--jade);
+  outline-offset: 2px;
+}
+
+.archive-picker:active {
+  transform: translateY(1px);
+}
+
+.archive-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.archive-file-mark {
   display: grid;
+  width: 48px;
+  height: 58px;
+  place-items: center;
+  align-content: center;
   gap: 5px;
+  color: white;
+  background: var(--ink);
+  border-radius: 5px 10px 10px 3px;
 }
 
-.native-session-status strong {
-  font: 700 13px/1.2 "STKaiti", "KaiTi", serif;
+.archive-file-mark b {
+  font: 800 8px/1 ui-monospace, Consolas, monospace;
+  letter-spacing: .08em;
 }
 
-.native-session-status small {
+.archive-file-mark i {
+  color: #b8cbc6;
+  font: 700 11px/1 "STKaiti", "KaiTi", serif;
+  font-style: normal;
+}
+
+.archive-file-copy {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.archive-file-copy strong {
+  overflow: hidden;
+  font: 700 14px/1.2 "STKaiti", "KaiTi", serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archive-file-copy small {
   color: var(--muted);
   font-size: 8px;
   line-height: 1.55;
 }
 
-.native-session-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 13px;
-}
-
-.native-session-actions button {
-  min-height: 34px;
-  padding: 0 11px;
-  border: 1px solid var(--line);
-  border-radius: 8px 8px 8px 3px;
-  color: var(--ink);
-  background: var(--surface);
+.archive-file-action {
+  color: var(--cinnabar);
   font-size: 9px;
   font-weight: 800;
-  cursor: pointer;
 }
 
-.native-session-actions button:first-child {
-  color: white;
-  background: var(--ink);
-  border-color: var(--ink);
+.archive-preserve {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.6;
 }
 
-.sync-progress { margin-top: 18px; }
-.sync-progress > span { display: block; height: 4px; overflow: hidden; background: var(--mist); border-radius: 99px; }
-.sync-progress i { display: block; width: 0; height: 100%; background: var(--jade); transition: width .2s ease; }
-.sync-progress p { margin: 8px 0 0; color: var(--muted); font-size: 8px; }
 .sheet-error { margin: 14px 0 0; color: #9e3f30; font-size: 9px; line-height: 1.6; }
 
 .toast {
