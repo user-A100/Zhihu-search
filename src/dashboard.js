@@ -687,6 +687,11 @@ els.clearButton.addEventListener("click", async () => {
 
 storageApi.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
+  if (changes.items) {
+    state.items = changes.items.newValue || [];
+    renderCollections();
+    render();
+  }
   if (changes.clipped) {
     state.clipped = changes.clipped.newValue || {};
     render();

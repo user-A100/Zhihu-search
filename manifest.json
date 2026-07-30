@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "知藏 · 知乎收藏检索与剪藏标记",
-  "version": "0.3.0",
-  "description": "分页检索知乎收藏，使用多级条件下探，并批量导出 Markdown 到 Obsidian。",
+  "version": "0.3.1",
+  "description": "收藏知乎内容，一键导入 Markdown 到 Obsidian，并维护本地剪藏索引。",
   "permissions": [
     "storage",
     "tabs",
@@ -35,7 +35,7 @@
       "suggested_key": {
         "default": "Alt+Shift+M"
       },
-      "description": "标记或取消标记当前知乎内容"
+      "description": "收藏当前知乎内容并导入 Obsidian"
     }
   }
 }

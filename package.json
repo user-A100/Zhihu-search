@@ -1,11 +1,11 @@
 {
   "name": "zhicang",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
-    "check": "node --check src/background.js && node --check src/content-marker.js && node --check src/dashboard.js && node --check src/mobile-runtime.js && node --check src/preview-runtime.js && node --check src/mobile.js && node --check src/lib.js && node --check src/obsidian.js && node --check src/boot-guard.js && node --check scripts/build-mobile.mjs",
+    "check": "node --check src/background.js && node --check src/content-marker.js && node --check src/clipper.js && node --check src/dashboard.js && node --check src/mobile-runtime.js && node --check src/preview-runtime.js && node --check src/mobile.js && node --check src/lib.js && node --check src/obsidian.js && node --check src/boot-guard.js && node --check scripts/build-mobile.mjs",
     "preview:mobile": "python -m http.server 4173",
     "mobile:build:web": "node scripts/build-mobile.mjs",
     "mobile:sync": "npm run mobile:build:web && npx cap sync android",
