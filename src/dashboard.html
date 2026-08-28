@@ -101,7 +101,8 @@
               <span id="selectedCount" class="selected-count">已选 0 篇</span>
               <div class="bulk-actions">
                 <button class="outline-button" id="importSelectedButton" type="button" disabled>导入所选</button>
-                <button class="primary-button" id="importAllButton" type="button">导入全部结果</button>
+                <button class="outline-button" id="importAllButton" type="button">重新导入全部结果</button>
+                <button class="primary-button" id="importUnclippedButton" type="button">仅导入未剪藏</button>
               </div>
             </div>
             <div id="batchProgress" class="batch-progress" hidden>
@@ -159,6 +160,11 @@
           <p id="progressText">准备同步…</p>
         </div>
         <p id="dialogError" class="dialog-error" role="alert" hidden></p>
+        <label class="full-sync-toggle" style="display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:13px;color:#60747a;">
+          <input id="fullSyncCheckbox" type="checkbox" />
+          <span>完全重新同步（忽略增量缓存，重新拉取全部内容，较慢）</span>
+        </label>
+
         <div class="dialog-actions">
           <button class="quiet-button danger" id="clearButton" type="button">清除本地数据</button>
           <button class="primary-button" id="syncButton" type="submit">同步收藏</button>
@@ -222,7 +228,7 @@
     <script src="./vendor/turndown/turndown.js"></script>
     <script src="./vendor/turndown/turndown-plugin-gfm.js"></script>
     <script src="./obsidian.js?v=4"></script>
-    <script src="./dashboard.js?v=12"></script>
+    <script src="./dashboard.js?v=14"></script>
     <script src="./boot-guard.js"></script>
   </body>
 </html>
