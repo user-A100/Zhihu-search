@@ -1,4 +1,5 @@
 const {
+  createPortableLibrary,
   extractCollectionId,
   extractProfileToken,
   formatDate,
@@ -29,16 +30,16 @@ const state = {
 
 const els = Object.fromEntries(
   [
-    "settingsButton", "searchInput", "totalCount", "allCount", "unclippedCount",
+    "settingsButton", "mobileExportButton", "searchInput", "totalCount", "allCount", "unclippedCount",
     "clippedCount", "collectionFilter", "pageSizeSelect", "resultSummary", "emptyState",
     "emptySettingsButton", "advancedSearchToggle", "advancedSearchSection", "advancedSearchPanel",
     "conditionList", "conditionTemplate", "addConditionButton",
     "clearConditionsButton", "bulkToolbar", "selectPageCheckbox", "selectedCount",
-    "importSelectedButton", "importAllButton", "batchProgress", "batchProgressBar",
+    "importSelectedButton", "importAllButton", "importUnclippedButton", "batchProgress", "batchProgressBar",
     "batchProgressText", "pagination", "previousPageButton", "nextPageButton",
     "pageNumbers", "pageStatus", "footerStatus",
     "results", "settingsDialog", "settingsForm", "profileInput", "syncProgress",
-    "progressBar", "progressText", "dialogError", "syncButton", "clearButton",
+    "progressBar", "progressText", "dialogError", "syncButton", "clearButton", "fullSyncCheckbox",
     "obsidianDirectoryStatus", "obsidianDirectoryButton", "obsidianDirectoryError",
     "resultTemplate", "toast"
   ].map((id) => [id, document.getElementById(id)])
@@ -186,8 +187,13 @@ function currentPageItems() {
   return paginateItems(visibleItems(), state.page, state.pageSize).items;
 }
 
+function visibleUnclippedItems(items = visibleItems()) {
+  return items.filter((item) => !isClipped(item));
+}
+
 function updateBulkToolbar(pageItems = currentPageItems(), allItems = visibleItems()) {
   const selectedItems = allItems.filter((item) => state.selected.has(item.id));
+  const unclippedItems = visibleUnclippedItems(allItems);
   const selectedOnPage = pageItems.filter((item) => state.selected.has(item.id)).length;
   els.bulkToolbar.hidden = state.items.length === 0;
   els.selectedCount.textContent = `已选 ${selectedItems.length} 篇`;
@@ -196,8 +202,10 @@ function updateBulkToolbar(pageItems = currentPageItems(), allItems = visibleIte
   els.selectPageCheckbox.disabled = state.exporting || pageItems.length === 0;
   els.importSelectedButton.disabled = state.exporting || selectedItems.length === 0;
   els.importAllButton.disabled = state.exporting || allItems.length === 0;
+  els.importUnclippedButton.disabled = state.exporting || unclippedItems.length === 0;
   els.importSelectedButton.textContent = state.exporting ? "正在导入…" : `导入所选${selectedItems.length ? `（${selectedItems.length}）` : ""}`;
-  els.importAllButton.textContent = state.exporting ? "正在导入…" : `导入全部结果${allItems.length ? `（${allItems.length}）` : ""}`;
+  els.importAllButton.textContent = state.exporting ? "正在导入…" : `重新导入全部结果${allItems.length ? `（${allItems.length}）` : ""}`;
+  els.importUnclippedButton.textContent = state.exporting ? "正在导入…" : `仅导入未剪藏${unclippedItems.length ? `（${unclippedItems.length}）` : ""}`;
 }
 
 function scrollToResults() {
@@ -208,6 +216,7 @@ function scrollToResults() {
 
 function render() {
   updateCounts();
+  els.mobileExportButton.disabled = state.items.length === 0;
   const items = visibleItems();
   const pagination = paginateItems(items, state.page, state.pageSize);
   state.page = pagination.page;
@@ -374,6 +383,38 @@ function showToast(message) {
   showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2200);
 }
 
+function portableLibraryFilename(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `知藏收藏-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.json`;
+}
+
+function exportPortableLibrary() {
+  if (!state.items.length) {
+    showToast("请先同步收藏，再导出手机数据包");
+    return;
+  }
+
+  const exportedAt = Date.now();
+  const archive = createPortableLibrary({
+    items: state.items,
+    profile: state.profile,
+    indexedAt: state.indexedAt,
+    exportedAt
+  });
+  const filename = portableLibraryFilename(exportedAt);
+  const blob = new Blob([JSON.stringify(archive)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`已导出 ${archive.itemCount} 篇收藏 · ${filename}`);
+}
+
 function setProgress(current, total, text) {
   const percentage = total
     ? Math.max(0, Math.min(100, Math.round((current / total) * 100)))
@@ -416,7 +457,43 @@ async function fetchAllPages(urlFactory, onPage) {
   return rows;
 }
 
-async function runSync(profileInput) {
+// 拉取单个收藏夹的内容。增量模式下，只要某一页全是本地已有的内容，
+// 说明更早的分页在上次同步时已经拉过，就直接停止翻页，避免每次全量重拉。
+async function fetchCollectionItems(collection, existingKeys, { full, onPage } = {}) {
+  const rows = [];
+  let offset = 0;
+  const limit = 20;
+  let fresh = 0;
+  for (let page = 0; page < 500; page += 1) {
+    const payload = await fetchJson(
+      `https://www.zhihu.com/api/v4/collections/${collection.id}/items?offset=${offset}&limit=${limit}`
+    );
+    const data = payload.data || [];
+    if (!data.length) break;
+    rows.push(...data);
+    const total = payload.paging?.totals || rows.length;
+
+    let pageFresh = data.length;
+    if (!full) {
+      pageFresh = 0;
+      for (const entry of data) {
+        let key = "";
+        try { key = parseCollectionItem(entry, collection)?.url || ""; } catch { key = ""; }
+        if (!key || !existingKeys.has(key)) pageFresh += 1;
+      }
+    }
+    fresh += pageFresh;
+    onPage?.(rows.length, total, full ? rows.length : fresh);
+
+    if (payload.paging?.is_end) break;
+    // 增量提前停止：这一页没有新内容，更早的分页必然都已同步过。
+    if (!full && pageFresh === 0) break;
+    offset += limit;
+  }
+  return rows;
+}
+
+async function runSync(profileInput, { full = false } = {}) {
   const collectionId = extractCollectionId(profileInput);
   const token = extractProfileToken(profileInput);
   if (!collectionId && !token) {
@@ -440,39 +517,58 @@ async function runSync(profileInput) {
   }
   if (!collections.length) throw new Error("没有找到可读取的收藏夹。请确认主页地址和知乎登录状态。");
 
+  // 切换了主页地址或勾选了“完全重新同步”时，丢弃本地缓存、整体替换；
+  // 否则走增量：把本地已有内容按 url 去重，命中已知内容即提前停止翻页。
+  const stored = await storage.get(["items", "profile"]);
+  const knownProfile = state.profile || stored.profile || "";
+  const useIncremental = !full && knownProfile === profileInput.trim();
+  const prior = useIncremental ? (stored.items || []) : [];
+  const existingKeys = new Set(prior.map((item) => item.url || item.id).filter(Boolean));
+  const modeLabel = useIncremental ? "增量同步" : "同步";
+
   const parsed = [];
   for (let index = 0; index < collections.length; index += 1) {
     const collection = collections[index];
-    setProgress(index, collections.length, `正在同步 ${collection.title}（${index + 1}/${collections.length}）`);
-    const entries = await fetchAllPages(
-      (offset, limit) => `https://www.zhihu.com/api/v4/collections/${collection.id}/items?offset=${offset}&limit=${limit}`,
-      (current, total) => setProgress(
-        index + (current / Math.max(total, 1)),
+    setProgress(index, collections.length, `${modeLabel} ${collection.title}（${index + 1}/${collections.length}）`);
+    const entries = await fetchCollectionItems(collection, existingKeys, {
+      full: !useIncremental,
+      onPage: (scanned, total, fresh) => setProgress(
+        index + (scanned / Math.max(total, 1)),
         collections.length,
-        `正在同步 ${collection.title}：${current}/${total}`
+        useIncremental
+          ? `增量同步 ${collection.title}：新增 ${fresh} 篇（已检查 ${scanned}/${total}）`
+          : `正在同步 ${collection.title}：${scanned}/${total}`
       )
-    );
+    });
     for (const entry of entries) {
       try {
         const item = parseCollectionItem(entry, collection);
-        if (item.url) parsed.push(item);
+        if (item.url) {
+          item.collectedOrder = parsed.length;
+          parsed.push(item);
+        }
       } catch (error) {
         console.warn("跳过无法解析的收藏内容", entry, error);
       }
     }
   }
 
-  const items = mergeIndexedItems(parsed);
+  const merged = mergeIndexedItems(useIncremental ? [...prior, ...parsed] : parsed);
+  const added = useIncremental ? Math.max(0, merged.length - prior.length) : merged.length;
   const indexedAt = Date.now();
-  await storage.set({ items, profile: profileInput.trim(), indexedAt });
-  state.items = items;
+  await storage.set({ items: merged, profile: profileInput.trim(), indexedAt });
+  state.items = merged;
   state.profile = profileInput.trim();
   state.indexedAt = indexedAt;
   resetListing();
-  setProgress(collections.length, collections.length, `同步完成：${items.length} 篇内容`);
+  setProgress(
+    collections.length,
+    collections.length,
+    useIncremental ? `增量同步完成：新增 ${added} 篇，共 ${merged.length} 篇内容` : `同步完成：共 ${merged.length} 篇内容`
+  );
   renderCollections();
   render();
-  return items.length;
+  return { total: merged.length, added };
 }
 
 async function refreshObsidianDirectoryStatus() {
@@ -503,6 +599,7 @@ function openSettings() {
 }
 
 els.settingsButton.addEventListener("click", openSettings);
+els.mobileExportButton.addEventListener("click", exportPortableLibrary);
 els.emptySettingsButton.addEventListener("click", openSettings);
 els.obsidianDirectoryButton.addEventListener("click", async () => {
   els.obsidianDirectoryError.hidden = true;
@@ -567,7 +664,17 @@ els.importSelectedButton.addEventListener("click", () => {
   const items = visibleItems().filter((item) => state.selected.has(item.id));
   exportManyToObsidian(items);
 });
-els.importAllButton.addEventListener("click", () => exportManyToObsidian(visibleItems()));
+els.importUnclippedButton.addEventListener("click", () => {
+  exportManyToObsidian(visibleUnclippedItems());
+});
+els.importAllButton.addEventListener("click", () => {
+  const items = visibleItems();
+  const clippedCount = items.length - visibleUnclippedItems(items).length;
+  if (clippedCount > 0 && !confirm(
+    `全部结果中有 ${clippedCount} 篇已剪藏内容。继续会重新写入这些 Markdown；标题变化时可能保留旧文件。确定继续吗？`
+  )) return;
+  exportManyToObsidian(items);
+});
 els.previousPageButton.addEventListener("click", () => {
   if (state.page <= 1) return;
   state.page -= 1;
@@ -607,10 +714,15 @@ els.settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   els.dialogError.hidden = true;
   els.syncButton.disabled = true;
-  els.syncButton.textContent = "同步中…";
+  const full = els.fullSyncCheckbox?.checked;
+  els.syncButton.textContent = full ? "完全同步中…" : "同步中…";
   try {
-    const count = await runSync(els.profileInput.value);
-    showToast(`已更新 ${count} 篇收藏内容`);
+    const { total, added } = await runSync(els.profileInput.value, { full });
+    showToast(
+      full
+        ? `已完全重新同步，共 ${total} 篇收藏内容`
+        : added > 0 ? `新增 ${added} 篇，共 ${total} 篇收藏内容` : `收藏已是最新，共 ${total} 篇`
+    );
     setTimeout(() => els.settingsDialog.close(), 450);
   } catch (error) {
     els.dialogError.hidden = false;
@@ -620,6 +732,7 @@ els.settingsForm.addEventListener("submit", async (event) => {
   } finally {
     els.syncButton.disabled = false;
     els.syncButton.textContent = "同步收藏";
+    if (els.fullSyncCheckbox) els.fullSyncCheckbox.checked = false;
   }
 });
 
@@ -649,6 +762,11 @@ els.clearButton.addEventListener("click", async () => {
 
 storageApi.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
+  if (changes.items) {
+    state.items = changes.items.newValue || [];
+    renderCollections();
+    render();
+  }
   if (changes.clipped) {
     state.clipped = changes.clipped.newValue || {};
     render();

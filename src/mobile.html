@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#102a32" />
+    <title>知藏 · 你的知乎收藏阅读器</title>
+    <link rel="stylesheet" href="./mobile.css" />
+  </head>
+  <body>
+    <div id="bootError" class="boot-error" hidden>
+      知藏没有正常启动，请刷新后重试。
+    </div>
+
+    <div class="mobile-shell">
+      <header class="app-header">
+        <button class="wordmark" id="homeLogo" type="button" aria-label="返回知藏首页">
+          <span class="wordmark-seal" aria-hidden="true">知</span>
+          <span>
+            <strong>知藏</strong>
+            <small>私人收藏阅览室</small>
+          </span>
+        </button>
+        <button class="header-action" id="openImportButton" type="button" aria-label="载入知藏数据">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v11m0 0 4-4m-4 4-4-4M4 17v3h16v-3" />
+          </svg>
+          <span>载入</span>
+        </button>
+      </header>
+
+      <main class="app-main">
+        <section class="screen active" id="homeScreen" data-screen="home" aria-labelledby="homeHeading">
+          <div id="homeEmpty" class="onboarding" hidden>
+            <span class="onboarding-seal" aria-hidden="true">藏</span>
+            <p class="section-label">你的私人阅览室</p>
+            <h1 id="homeHeading">让收藏不再只是收藏</h1>
+            <p>从电脑知藏导出收藏数据包，再把它载入这里，一座安静、可搜索的移动书库就准备好了。</p>
+            <button class="primary-action" id="emptyImportButton" type="button">载入我的收藏</button>
+          </div>
+
+          <div id="homeContent">
+            <section class="daily-section" aria-labelledby="dailyHeading">
+              <div class="daily-intro">
+                <div>
+                  <p class="section-label">本轮推荐</p>
+                  <h1 id="dailyHeading">从旧收藏里<br />带走一个答案</h1>
+                </div>
+                <button class="shuffle-button" id="shuffleButton" type="button" aria-label="换一批推荐">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 4h3v3M3 6h2.6c5.8 0 6.8 12 12.6 12H21M18 20h3v-3M3 18h2.6c2.3 0 3.8-1.9 5.2-4.2M14.2 8.2c1.1-1.3 2.3-2.2 4-2.2H21" />
+                  </svg>
+                </button>
+              </div>
+              <article class="daily-card" id="dailyCard">
+                <div class="daily-number" aria-hidden="true"><span>今日</span><strong id="dailyNumber">01</strong></div>
+                <div class="daily-copy">
+                  <p id="dailyMeta"></p>
+                  <h2 id="dailyTitle"></h2>
+                  <p id="dailyExcerpt"></p>
+                  <button class="read-action" id="dailyReadButton" type="button">
+                    开始阅读
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                <span class="card-fold" aria-hidden="true"></span>
+              </article>
+            </section>
+
+            <section class="continue-section" id="continueSection" aria-labelledby="continueHeading">
+              <div class="section-head">
+                <div>
+                  <p class="section-label">藏签</p>
+                  <h2 id="continueHeading">接着上次读</h2>
+                </div>
+                <span id="continuePercent" class="reading-percent">0%</span>
+              </div>
+              <button class="bookmark-card" id="continueCard" type="button">
+                <span class="bookmark-ribbon" aria-hidden="true"></span>
+                <span class="bookmark-copy">
+                  <small id="continueCollection"></small>
+                  <strong id="continueTitle"></strong>
+                  <span class="progress-track"><i id="continueProgress"></i></span>
+                </span>
+                <span class="bookmark-arrow" aria-hidden="true">›</span>
+              </button>
+            </section>
+
+            <section class="shelf-section" aria-labelledby="recommendationHeading">
+              <div class="section-head">
+                <div>
+                  <p class="section-label">为你翻藏</p>
+                  <h2 id="recommendationHeading">随机推荐</h2>
+                </div>
+                <button class="text-action" id="refreshRecommendationsButton" type="button">换一批</button>
+              </div>
+              <div class="recommendation-feed" id="recommendationFeed"></div>
+              <button class="more-recommendations" id="moreRecommendationsButton" type="button">
+                <span>再翻一批旧收藏</span>
+                <i aria-hidden="true">↻</i>
+              </button>
+              <div class="exposure-note">
+                <span aria-hidden="true">藏</span>
+                <p>推荐会优先选择较少出现的内容，让每一篇收藏都有机会重新被看见。</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="screen" id="libraryScreen" data-screen="library" aria-labelledby="libraryHeading" hidden>
+          <div class="screen-title">
+            <p class="section-label">ARCHIVE</p>
+            <h1 id="libraryHeading">我的收藏库</h1>
+            <p id="librarySummary">按收藏时间排列 · 0 篇内容</p>
+          </div>
+          <div class="library-order">
+            <span><i aria-hidden="true"></i>按收藏时间倒序</span>
+            <small id="activeCollectionLabel">全部收藏</small>
+          </div>
+          <div class="collection-filters" id="libraryCollectionFilters" aria-label="按收藏夹筛选"></div>
+          <div class="collection-timeline" id="libraryItemList"></div>
+        </section>
+
+        <section class="screen search-screen" id="searchScreen" data-screen="search" aria-labelledby="searchHeading" hidden>
+          <div class="search-title">
+            <p class="section-label">全文检索</p>
+            <h1 id="searchHeading">找回那篇收藏</h1>
+          </div>
+          <div class="search-field" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 21-4.4-4.4m2.4-5.1A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z" />
+            </svg>
+            <input
+              id="mobileSearchInput"
+              type="search"
+              aria-label="搜索收藏"
+              placeholder="标题、作者、正文、收藏夹"
+              autocomplete="off"
+            />
+            <button id="clearSearchButton" type="button" aria-label="清空搜索" hidden>×</button>
+          </div>
+          <div class="search-chips" id="searchChips" aria-label="搜索筛选">
+            <button class="active" data-search-filter="all" type="button">全部</button>
+            <button data-search-filter="answer" type="button">回答</button>
+            <button data-search-filter="article" type="button">文章</button>
+            <button data-search-filter="unread" type="button">未读</button>
+          </div>
+          <p class="search-summary" id="searchSummary"></p>
+          <div class="stacked-list search-results" id="searchResults"></div>
+          <div class="search-placeholder" id="searchPlaceholder">
+            <span aria-hidden="true">寻</span>
+            <p>输入记得的只言片语，知藏会从全部收藏中替你找回来。</p>
+          </div>
+        </section>
+
+        <section class="screen" id="profileScreen" data-screen="profile" aria-labelledby="profileHeading" hidden>
+          <div class="profile-heading">
+            <div class="profile-seal" aria-hidden="true">知</div>
+            <p class="section-label">本地书库</p>
+            <h1 id="profileHeading">我的知藏</h1>
+            <p>收藏内容和阅读进度只保存在本机。</p>
+          </div>
+          <div class="profile-stats">
+            <div><strong id="profileItemCount">0</strong><span>篇收藏</span></div>
+            <div><strong id="profileReadCount">0</strong><span>篇已读</span></div>
+            <div><strong id="profileCollectionCount">0</strong><span>个书架</span></div>
+          </div>
+          <div class="settings-list">
+            <button id="profileImportButton" type="button">
+              <span><b>载入收藏数据包</b><small id="profileImportStatus">尚未载入</small></span>
+              <i aria-hidden="true">›</i>
+            </button>
+            <button id="clearReadingButton" type="button">
+              <span><b>清除阅读进度</b><small>保留收藏索引，只重置已读状态</small></span>
+              <i aria-hidden="true">›</i>
+            </button>
+          </div>
+          <section class="history-section" aria-labelledby="historyHeading">
+            <div class="section-head">
+              <div>
+                <p class="section-label">最近读过</p>
+                <h2 id="historyHeading">浏览历史</h2>
+              </div>
+              <button class="text-action" id="clearHistoryButton" type="button">清空</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+            <div class="history-empty" id="historyEmpty">
+              <span aria-hidden="true">阅</span>
+              <p>打开过的收藏会出现在这里。</p>
+            </div>
+          </section>
+          <p class="privacy-note">知藏不会上传收藏正文或阅读记录，数据包只在你选择的设备之间流转。</p>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="主要导航">
+        <button class="active" data-screen-target="home" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4Z" /></svg>
+          <span>首页</span>
+        </button>
+        <button data-screen-target="library" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h5v16H5zM10 6h5v14h-5zM15.4 5.2l3.5-1.1L23 18.7l-3.6 1.1z" /></svg>
+          <span>收藏库</span>
+        </button>
+        <button data-screen-target="search" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.4-4.4m2.4-5.1A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z" /></svg>
+          <span>搜索</span>
+        </button>
+        <button data-screen-target="profile" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" /></svg>
+          <span>我的</span>
+        </button>
+      </nav>
+    </div>
+
+    <section class="reader" id="reader" aria-labelledby="readerTitle" hidden>
+      <div class="reader-progress" aria-hidden="true"><span id="readerProgressBar"></span></div>
+      <header class="reader-header">
+        <button id="closeReaderButton" type="button" aria-label="返回">←</button>
+        <span id="readerHeaderCollection">知藏</span>
+        <a id="readerSourceLink" target="_blank" rel="noreferrer">原文 ↗</a>
+      </header>
+      <div class="reader-scroller" id="readerScroller">
+        <article class="reader-article">
+          <div class="reader-kicker">
+            <span id="readerType"></span>
+            <span id="readerDate"></span>
+          </div>
+          <h1 id="readerTitle"></h1>
+          <p class="reader-byline" id="readerByline"></p>
+          <div class="reader-body" id="readerBody"></div>
+          <footer class="reader-end">
+            <span aria-hidden="true">藏</span>
+            <p>已阅至篇末</p>
+            <button id="readerMarkButton" type="button">标记为已读</button>
+          </footer>
+        </article>
+      </div>
+      <div class="reader-toolbar">
+        <button id="fontDecreaseButton" type="button" aria-label="减小字号">字−</button>
+        <span id="readerPercent">0%</span>
+        <button id="fontIncreaseButton" type="button" aria-label="增大字号">字＋</button>
+      </div>
+    </section>
+
+    <dialog class="sheet-dialog" id="importDialog">
+      <form id="importForm" method="dialog">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="sheet-head">
+          <div>
+            <p class="section-label">装入数据包</p>
+            <h2>载入收藏库</h2>
+          </div>
+          <button class="sheet-close" value="cancel" type="submit" aria-label="关闭">×</button>
+        </div>
+        <p class="archive-route">
+          先在电脑知藏完成同步，点击右上角“导出到手机”，再选择得到的 JSON 文件。
+        </p>
+        <label class="archive-picker" id="archivePackageCard">
+          <input id="mobileArchiveInput" type="file" accept=".json,application/json" />
+          <span class="archive-file-mark" aria-hidden="true"><b>JSON</b><i>知藏</i></span>
+          <span class="archive-file-copy">
+            <strong id="archivePackageTitle">选择知藏数据包</strong>
+            <small id="archivePackageMeta">从电脑导出的收藏库文件</small>
+          </span>
+          <span class="archive-file-action">选择</span>
+        </label>
+        <p class="archive-preserve">载入新数据包会更新收藏库，并保留本机的阅读进度与浏览历史。</p>
+        <p class="sheet-error" id="mobileImportError" role="alert" hidden></p>
+        <button class="primary-action full" id="mobileImportButton" type="submit" disabled>载入收藏库</button>
+      </form>
+    </dialog>
+
+    <template id="mobileItemTemplate">
+      <button class="library-item" type="button">
+        <span class="item-type"></span>
+        <span class="item-main">
+          <small class="item-collection"></small>
+          <strong class="item-title"></strong>
+          <span class="item-excerpt"></span>
+          <span class="item-footer">
+            <i class="item-author"></i>
+            <i class="item-read-time"></i>
+          </span>
+          <span class="item-progress"><i></i></span>
+        </span>
+      </button>
+    </template>
+
+    <template id="recommendationTemplate">
+      <button class="recommendation-card" type="button">
+        <span class="recommendation-meta">
+          <i class="recommendation-collection"></i>
+          <i class="recommendation-type"></i>
+        </span>
+        <strong class="recommendation-title"></strong>
+        <span class="recommendation-excerpt"></span>
+        <span class="recommendation-footer">
+          <i class="recommendation-author"></i>
+          <i class="recommendation-read-time"></i>
+        </span>
+      </button>
+    </template>
+
+    <template id="historyItemTemplate">
+      <button class="history-item" type="button">
+        <span class="history-time"></span>
+        <span class="history-copy">
+          <small class="history-collection"></small>
+          <strong class="history-title"></strong>
+        </span>
+        <span class="history-arrow" aria-hidden="true">›</span>
+      </button>
+    </template>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./mobile-runtime.js?v=2"></script>
+    <script src="./preview-runtime.js?v=3"></script>
+    <script src="./lib.js?v=7"></script>
+    <script src="./mobile.js?v=3"></script>
+    <script src="./boot-guard.js"></script>
+  </body>
+</html>

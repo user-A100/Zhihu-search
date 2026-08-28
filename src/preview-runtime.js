@@ -1,6 +1,7 @@
 // Lets the dashboard be previewed from a local web server. In the installed
 // extension Chrome provides the real API, so this file does nothing.
-if (location.protocol === "http:" || location.protocol === "https:" || location.protocol === "file:") {
+const isNativeApp = Boolean(globalThis.Capacitor?.isNativePlatform?.());
+if (!isNativeApp && (location.protocol === "http:" || location.protocol === "https:" || location.protocol === "file:")) {
   const listeners = [];
   let previewData = {};
   const read = () => previewData;

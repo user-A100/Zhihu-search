@@ -147,9 +147,32 @@ input::placeholder {
   align-items: center;
 }
 
-.masthead > .quiet-button {
+.masthead-actions {
   grid-area: settings;
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.mobile-export-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-inline: var(--space-sm);
+}
+
+.transfer-mark {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: var(--radius-mark);
+  color: var(--color-accent-ink);
+  background: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  line-height: 1;
 }
 
 .brand-mark {

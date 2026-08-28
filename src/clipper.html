@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>知藏 · 正在剪藏</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Microsoft YaHei UI", system-ui, sans-serif;
+        background: #edf2ee;
+        color: #173a42;
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      main {
+        width: min(520px, 100%);
+        padding: 34px;
+        border: 1px solid rgba(23, 58, 66, .14);
+        border-radius: 22px;
+        background: #fbfdfb;
+        box-shadow: 0 20px 60px rgba(23, 58, 66, .13);
+      }
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: #173a42;
+        color: white;
+        font: 700 23px/1 "STKaiti", "KaiTi", serif;
+      }
+      h1 { margin: 22px 0 8px; font-size: 24px; }
+      p { margin: 0; color: #60747a; line-height: 1.7; }
+      button {
+        width: 100%;
+        min-height: 46px;
+        margin-top: 24px;
+        border: 0;
+        border-radius: 12px;
+        background: #173a42;
+        color: white;
+        font: 700 14px/1 "Microsoft YaHei UI", sans-serif;
+        cursor: pointer;
+      }
+      button:disabled { cursor: wait; opacity: .65; }
+      .error { margin-top: 14px; color: #9b4035; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">藏</div>
+      <h1 id="heading">正在准备剪藏…</h1>
+      <p id="description">知藏会把当前知乎内容写入你选择的 Obsidian 文件夹。</p>
+      <button id="continueButton" type="button" hidden>选择文件夹并继续</button>
+      <p class="error" id="error" role="alert" hidden></p>
+    </main>
+    <script src="./vendor/turndown/turndown.js"></script>
+    <script src="./vendor/turndown/turndown-plugin-gfm.js"></script>
+    <script src="./obsidian.js"></script>
+    <script src="./clipper.js"></script>
+  </body>
+</html>
